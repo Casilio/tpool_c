@@ -5,27 +5,27 @@
 #include <stdbool.h>
 #include "tpool.h"
 
-void waitForCond(TPool* pool)
+void waitForJob(TPool* pool)
 {
   pthread_mutex_lock(&pool->jobsMutex);
-  while(pool->v != 1){
+  while(pool->condValue != 1){
     pthread_cond_wait(&pool->jobsCond, &pool->jobsMutex);
   }
   pthread_mutex_unlock(&pool->jobsMutex);
 }
 
-void postBroadcase(TPool* pool)
+void broadcastJob(TPool* pool)
 {
   pthread_mutex_lock(&pool->jobsMutex);
-  pool->v = 1;
+  pool->condValue = 1;
   pthread_cond_broadcast(&pool->jobsCond);
   pthread_mutex_unlock(&pool->jobsMutex);
 }
 
-void postSignal(TPool* pool)
+void signalJob(TPool* pool)
 {
   pthread_mutex_lock(&pool->jobsMutex);
-  pool->v = 1;
+  pool->condValue = 1;
   pthread_cond_signal(&pool->jobsCond);
   pthread_mutex_unlock(&pool->jobsMutex);
 }
@@ -64,8 +64,7 @@ void tpoolEnqueue(TPool* pool, jobFunc func, void* arg)
   }
   queue->length++;
 
-
-  postSignal(pool);
+  signalJob(pool);
 
   pthread_mutex_unlock(&queue->mutex);
 }
@@ -95,7 +94,7 @@ Job* queuePoll(TPool* pool)
         queue->first = queue->first->nextJob;
         queue->length--;
 
-        postSignal(pool);
+        signalJob(pool);
       }
   }
 
@@ -115,7 +114,7 @@ void* infiniteWork(void* arg)
 
   while (pool->working)
   {
-    waitForCond(pool);
+    waitForJob(pool);
 
     if (pool->working) {
       Job* job = queuePoll(pool);
@@ -162,7 +161,7 @@ TPool* tpoolCreate(int threadsCount)
   pool->threadsCount = threadsCount;
   pool->working = true;
   pool->joining = false;
-  pool->v = 0;
+  pool->condValue = 0;
 
   int res = pthread_barrier_init(&pool->startBarrier, 0, pool->threadsCount);
   if (res) {
@@ -196,6 +195,12 @@ TPool* tpoolCreate(int threadsCount)
   }
 
   pool->queue = (Queue*)malloc(sizeof(Queue));
+  if (pool->queue == NULL) {
+    free(pool);
+
+    return NULL;
+  }
+
   pool->queue->first = NULL;
   pool->queue->last = NULL;
   pool->queue->length = 0;
@@ -218,6 +223,7 @@ TPool* tpoolCreate(int threadsCount)
 
     // start thread
     pthread_create(&thread->pthread, 0, infiniteWork, thread);
+    pthread_detach(thread->pthread);
   }
 
 #if TPOOL_VERBOSE
@@ -235,7 +241,7 @@ void tpoolJoin(TPool* pool)
 
   pool->joining = true;
 
-  postBroadcase(pool);
+  broadcastJob(pool);
 
   pthread_barrier_wait(&pool->joinBarrier);
 

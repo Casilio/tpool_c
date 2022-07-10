@@ -42,7 +42,7 @@ typedef struct TPool {
 
   pthread_mutex_t jobsMutex;
   pthread_cond_t jobsCond;
-  int v;
+  int condValue;
 } TPool;
 
 TPool* tpoolCreate(int threadsCount);
