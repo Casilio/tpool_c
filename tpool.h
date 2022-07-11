@@ -15,8 +15,8 @@ typedef struct {
 typedef void* (*jobFunc)(void* arg);
 
 typedef struct Job {
-  void* arg;
   jobFunc func;
+  void* arg;
   struct Job* nextJob;
 } Job;
 
@@ -48,5 +48,6 @@ typedef struct TPool {
 TPool* tpoolCreate(int threadsCount);
 void tpoolJoin(TPool* pool);
 void tpoolEnqueue(TPool* pool, jobFunc func, void* arg);
+void tpoolDestroy(TPool* pool);
 
 #endif

@@ -196,6 +196,7 @@ TPool* tpoolCreate(int threadsCount)
 
   pool->queue = (Queue*)malloc(sizeof(Queue));
   if (pool->queue == NULL) {
+    free(pool->threads);
     free(pool);
 
     return NULL;
@@ -208,6 +209,7 @@ TPool* tpoolCreate(int threadsCount)
   res = pthread_mutex_init(&pool->queue->mutex, 0);
   if (res) {
     free(pool->queue);
+    free(pool->threads);
     free(pool);
 
     return NULL;
@@ -219,10 +221,10 @@ TPool* tpoolCreate(int threadsCount)
     Thread* thread = &pool->threads[i];
 
     thread->pool = pool;
-    thread->id = i;
+    thread->id = i + 1;
 
     // start thread
-    pthread_create(&thread->pthread, 0, infiniteWork, thread);
+    pthread_create(&thread->pthread, NULL, infiniteWork, thread);
     pthread_detach(thread->pthread);
   }
 
@@ -250,4 +252,18 @@ void tpoolJoin(TPool* pool)
 #endif
 
   return;
+}
+
+void tpoolDestroy(TPool* pool)
+{
+  // TODO: check results
+  pthread_mutex_destroy(&pool->jobsMutex);
+  pthread_mutex_destroy(&pool->queue->mutex);
+  pthread_cond_destroy(&pool->jobsCond);
+  pthread_barrier_destroy(&pool->startBarrier);
+  pthread_barrier_destroy(&pool->joinBarrier);
+
+  free(pool->queue);
+  free(pool->threads);
+  free(pool);
 }

@@ -33,14 +33,14 @@ int main()
 
   // low load. single element queue
   for (int i = 0; i < 5; i++) {
-    int* num = malloc(sizeof(int));
+    int* num = (int*)malloc(sizeof(int));
     *num = i + 10 * 25 / 7;
 
     tpoolEnqueue(pool, firstJob, num);
     sleep(1);
   };
 
-  sleep(3);
+  sleep(1);
 
   printf("Spamming jobs\n");
 
@@ -54,6 +54,7 @@ int main()
 
   printf("Finishing main\n");
   tpoolJoin(pool);
+  tpoolDestroy(pool);
 
   printf("Finished main\n");
   return 0;
