@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-clang -Wall tpool.c example.c -g -lpthread -DTPOOL_VERBOSE=1
